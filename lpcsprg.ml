@@ -7,30 +7,30 @@ open Unix
 
 module Opt =
   struct
-    open Arg;;
+    open Arg
 
-    let sao x y = x := Some y;;
-    let set_int32 x y = x := (Int32.of_string y);;
+    let sao x y = x := Some y
+    let set_int32 x y = x := (Int32.of_string y)
 
-    let modem_device = ref "/dev/ttyS1";;
-    let baud = ref 38400;;
-    let clock = ref 14.7456e6;;
-    let start = ref 0x00000000l;;
-    let sector_buffer = ref 0x40001000l;;
-    let write_size = ref 4096;;
-    let length = ref 256;;
-    let synchronize = ref true;;
-    let checksum = ref true;;
-    let toggle_dtr = ref false;;
-    let cache : string option ref = ref None;;
+    let modem_device = ref "/dev/ttyS1"
+    let baud = ref 38400
+    let clock = ref 14.7456e6
+    let start = ref 0x00000000l
+    let sector_buffer = ref 0x40001000l
+    let write_size = ref 4096
+    let length = ref 256
+    let synchronize = ref true
+    let checksum = ref true
+    let toggle_dtr = ref false
+    let cache : string option ref = ref None
 
     let commands :
       [`Dump of string * int32 * int | `Program of string | `Info | `Unlock |`Jump_ARM of int32|`Erase of int * int]
       list ref
       =
-      ref [];;
+      ref []
 
-    let cmd c = commands := c :: !commands;;
+    let cmd c = commands := c :: !commands
 
     let spec =
       align [
@@ -63,16 +63,16 @@ module Opt =
 
         "-toggle",        Set toggle_dtr,              " Toggle DTR";
       ]
-    ;;
+    
   end
-;;
 
-let pf = Printf.printf;;
-let fp = Printf.fprintf;;
-let sf = Printf.sprintf;;
 
-exception Timeout;;
-exception Match_failure;;
+let pf = Printf.printf
+let fp = Printf.fprintf
+let sf = Printf.sprintf
+
+exception Timeout
+exception Match_failure
 
 type return_code =
   [ `COMMAND_SUCCESS
@@ -96,9 +96,9 @@ type return_code =
   | `INVALID_STOP_BIT
   | `CODE_READ_PROTECTION_ENABLED
   | `RETURN_CODE of int ]
-;;
 
-exception Command_failure of return_code;;
+
+exception Command_failure of return_code
 
 let input_char_with_timeout ?(timeout=2.0) fd =
   let w = String.make 1 '\000' in
@@ -110,7 +110,7 @@ let input_char_with_timeout ?(timeout=2.0) fd =
     else
       w.[0]
   | _ -> raise Timeout
-;;
+
 
 let match_string ?(ignore=[]) ?timeout u fd =
   let m = String.length u in
@@ -128,9 +128,9 @@ let match_string ?(ignore=[]) ?timeout u fd =
           raise Match_failure
   in
   loop 0
-;;
 
-exception Synchronization_failure;;
+
+exception Synchronization_failure
 
 let print_return_code oc = function
 | `COMMAND_SUCCESS -> fp oc "COMMAND_SUCCESS"
@@ -154,18 +154,18 @@ let print_return_code oc = function
 | `INVALID_STOP_BIT -> fp oc "INVALID_STOP_BIT"
 | `CODE_READ_PROTECTION_ENABLED -> fp oc "CODE_READ_PROTECTION_ENABLED"
 | `RETURN_CODE x -> fp oc "RETURN_CODE(%d)" x
-;;
+
 
 let uu_encode_byte = function
   | 0 -> '`'
   | b -> Char.chr (b + 0x20)
-;;
+
 
 let uu_decode_byte = function
   | '`' -> 0
   | '!'..'_' as c -> (Char.code c) - 0x20
   | _ -> raise Match_failure
-;;
+
 
 let uu_is_valid u =
   let m = String.length u in
@@ -178,7 +178,7 @@ let uu_is_valid u =
       with
       | Match_failure -> false
     end
-;;
+
 
 (* Encodes one line of data from [u] starting at offset [i] with length [m] into the buffer [b].
  * Returns the number of bytes from [u] encoded. *)
@@ -205,7 +205,7 @@ let uu_encode_to_buffer b u i m =
     f (a2 land 63);
   done;
   o
-;;
+
 
 let uu_decode_to_buffer b u =
   let m = String.length u in
@@ -244,19 +244,19 @@ let uu_decode_to_buffer b u =
         a3 ()
     done;
     n
-;;
+
 
 let uu_test_coding u =
   let b1 = Buffer.create 256 in
   let n = uu_encode_to_buffer b1 u 0 (String.length u) in
-  (Buffer.contents b1, n);;
+  (Buffer.contents b1, n)
 
 let uu_test_decoding v =
   let b2 = Buffer.create 256 in
   let o = uu_decode_to_buffer b2 v in
   let u = Buffer.contents b2 in
   (u,o)
-;;
+
 
 let compute_checksum u i0 i1 =
   let rec loop q i =
@@ -266,31 +266,31 @@ let compute_checksum u i0 i1 =
       loop (q + (Char.code u.[i])) (i + 1)
   in
   loop 0 i0
-;;
 
-module IM = Map.Make(struct type t = int let compare = compare end);;
 
-let ( !!! ) = Int32.of_int;;
-let ( !!? ) = Int32.to_int;;
-let ( +++ ) = Int32.add;;
-let ( --- ) = Int32.sub;;
-let ( ||| ) = Int32.logor;;
-let ( &&& ) = Int32.logand;;
-let ( <<< ) = Int32.shift_left;;
-let ( >>> ) = Int32.shift_right_logical;;
+module IM = Map.Make(struct type t = int let compare = compare end)
+
+let ( !!! ) = Int32.of_int
+let ( !!? ) = Int32.to_int
+let ( +++ ) = Int32.add
+let ( --- ) = Int32.sub
+let ( ||| ) = Int32.logor
+let ( &&& ) = Int32.logand
+let ( <<< ) = Int32.shift_left
+let ( >>> ) = Int32.shift_right_logical
 
 let flash_sector_to_address = function
   | s when 0 <= s && s <=  7 -> !!!(s lsl 12)
   | s when           s <= 21 -> !!!(((s -  8) lsl 15) + 0x0000_8000)
   | s when           s <= 26 -> !!!(((s - 26) lsl 12) + 0x0007_8000)
   | _ -> invalid_arg "Bad sector number"
-;;
+
 
 let sector_size = function
   | x when 8 <= x && x <= 21 -> 32768
   | x when 0 <= x && x <= 26 -> 4096
   | _ -> invalid_arg "Bad sector number"
-;;
+
 
 let address_to_flash_sector a =
   let x = !!? (a >>> 12) in
@@ -299,11 +299,17 @@ let address_to_flash_sector a =
   | _ when 0x08 <= x && x < 0x78 -> 8 + ((x - 0x08) lsr 3)
   | _ when 0x78 <= x && x < 0x7d -> 26 + (x - 0x78)
   | _ -> invalid_arg (sf "Bad flash address 0x%08lx" a)
-;;
+
 
 let main () =
   Arg.parse Opt.spec (fun x -> Printf.eprintf "Extraneous argument %S ignored.\n%!" x) 
-    "Will output data from serial port to stdout.\n";
+    (Printf.sprintf "%s [-clock 14.7546e6] [-device /dev/ttyS0] [-baud 38400] [-progam file.hex | -info | -erase start end]"
+      Sys.argv.(0));
+  if !Opt.commands = [] then
+    begin
+      pf "No command given, try -help for options.\n%!";
+      exit 0
+    end;
   let fd = openfile !Opt.modem_device [O_RDWR] 0 in
   let ta = tcgetattr fd in
   let toggle_dtr () =
@@ -802,6 +808,5 @@ let main () =
   | Sys.Break|End_of_file ->
     tcsetattr fd TCSANOW ta;
     close fd
-;;
 
-let _ = main ();;
+let _ = main ()

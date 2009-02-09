@@ -7,16 +7,14 @@ type intelhex_line =
 | ESAR of int
 | SSAR of int32
 | Unknown of int
-;;
 
-let sf = Printf.sprintf;;
+let sf = Printf.sprintf
 
 let hex_to_digit = function
   | '0'..'9' as c -> (Char.code c) land 15
   | 'a'..'f' as c -> (Char.code c) - 87
   | 'A'..'F' as c -> (Char.code c) - 55
   | _ -> invalid_arg "Bad hex digit"
-;;
 
 let decode_bytes u =
   let m = String.length u in
@@ -29,14 +27,12 @@ let decode_bytes u =
           (hex_to_digit u.[2 * i + 2]))
   done;
   v
-;;
 
-
-let ( !!! ) = Int32.of_int;;
-let ( +++ ) = Int32.add;;
-let ( ||| ) = Int32.logor;;
-let ( &&& ) = Int32.logand;;
-let ( <<< ) = Int32.shift_left;;
+let ( !!! ) = Int32.of_int
+let ( +++ ) = Int32.add
+let ( ||| ) = Int32.logor
+let ( &&& ) = Int32.logand
+let ( <<< ) = Int32.shift_left
 
 let decode_intelhex_line u =
   let m = String.length u in
@@ -65,7 +61,6 @@ let decode_intelhex_line u =
       | 0x04 -> ELAR(((g v.[4]) lsl 8) lor (g v.[5]))
       | _ -> Unknown rectyp
     end
-;;
 
 let iter_over_intelhex_file fn f =
   let ic = open_in_bin fn in
@@ -87,4 +82,3 @@ let iter_over_intelhex_file fn f =
     done
   with
   | End_of_file -> close_in ic
-;;
